@@ -1,34 +1,34 @@
 import streamlit as st
 import requests
 import pandas as pd
-import time
 
 st.set_page_config(page_title="ZF-Sentinel Live", page_icon="⚡", layout="wide")
 
 st.title("⚡ ZF-Sentinel: Market Anomaly & Liquidity Scanner")
 st.markdown("*Protokol Pemantauan Ketegangan Pasar & Deteksi Anomali Berbasis Zuhri Formalism*")
 
-# Tombol Refresh Manual untuk HP
 if st.button("🔄 Segarkan Data Pasar"):
     st.rerun()
 
 @st.cache_data(ttl=10)
 def fetch_market_data():
-    url = "https://api.binance.com/api/v3/ticker/24hr"
+    # Menggunakan node data publik alternatif yang ramah cloud
+    url = "https://data-api.binance.vision/api/v3/ticker/24hr"
     try:
         response = requests.get(url, timeout=5)
-        data = response.json()
-        df = pd.DataFrame(data)
-        # Ambil pair populer USDT
-        df = df[df['symbol'].str.endswith('USDT')]
-        df['priceChangePercent'] = df['priceChangePercent'].astype(float)
-        df['volume'] = df['volume'].astype(float)
-        df['quoteVolume'] = df['quoteVolume'].astype(float)
-        return df
+        if response.status_code == 200:
+            data = response.json()
+            df = pd.DataFrame(data)
+            df = df[df['symbol'].str.endswith('USDT')]
+            df['priceChangePercent'] = df['priceChangePercent'].astype(float)
+            df['volume'] = df['volume'].astype(float)
+            df['quoteVolume'] = df['quoteVolume'].astype(float)
+            return df
+        return None
     except Exception as e:
         return None
 
-with st.spinner("Memindai manifold bursa..."):
+with st.spinner("Menghubungkan ulang ke node resonansi..."):
     df = fetch_market_data()
 
 if df is not None and not df.empty:
@@ -44,7 +44,6 @@ if df is not None and not df.empty:
 
     st.subheader("🚨 Deteksi Anomali & Lonjakan Volatilitas")
     
-    # Filter aset yang mengalami anomali harga ekstrem (> 7% atau < -7%)
     threshold = st.slider("Ambang Batas Anomali (%)", 3.0, 20.0, 7.0)
     anomalies = df[abs(df['priceChangePercent']) >= threshold].sort_values(by="priceChangePercent", ascending=False)
 
@@ -54,7 +53,7 @@ if df is not None and not df.empty:
     else:
         st.success("Kondisi pasar dalam fase laminar (stabil, belum ada anomali ekstrem).")
 else:
-    st.error("Gagal terhubung ke node penyedia data likuiditas.")
+    st.error("Gagal terhubung ke node penyedia data likuiditas. Periksa kembali sambungan jaringan.")
 
 st.markdown("---")
 st.caption("ZF-Core V16.7-PREDATOR | Terkunci pada Time-Lock 2326")
