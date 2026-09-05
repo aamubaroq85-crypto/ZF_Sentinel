@@ -55,7 +55,8 @@ if df is not None and not df.empty:
 
     st.subheader("🚨 Deteksi Anomali & ZF-Score")
     
-    threshold = st.slider("Ambang Batas Perubahan (%)", 1.0, 20.0, 5.0)
+    # Rentang slider diturunkan mulai dari 0.1%
+    threshold = st.slider("Ambang Batas Perubahan (%)", 0.1, 20.0, 2.0)
     
     # 2. FITUR ZF-SCORE SINTETIS (Skala 0 - 1)
     df['zf_score'] = (abs(df['priceChangePercent']) / 20.0).clip(0.0, 1.0)
@@ -63,7 +64,7 @@ if df is not None and not df.empty:
     anomalies = df[abs(df['priceChangePercent']) >= threshold].sort_values(by="priceChangePercent", ascending=False)
 
     if not anomalies.empty:
-        st.warning(f"Ditemukan {len(anomalies)} aset dengan distorsi tinggi!")
+        st.warning(f"Ditemukan {len(anomalies)} aset dengan distorsi memenuhi ambang batas!")
         
         # 3. FITUR TELEGRAM BROADCAST BUTTON
         if st.button("🚀 Broadcast 3 Anomali Teratas ke Telegram"):
@@ -100,7 +101,7 @@ if df is not None and not df.empty:
             score = row['zf_score']
             
             color_icon = "🟢" if change > 0 else "🔴"
-            status_kritis = "🔥 KRITIS (Predator)" if score > 0.75 else "⚡ Stabil/Laminar"
+            status_kritis = "🔥 KRITIS (Predator)" if score > 0.75 else "⚡ Aktif/Observasi"
             
             with st.container():
                 st.markdown(f"""
@@ -110,7 +111,7 @@ if df is not None and not df.empty:
                 """)
                 st.markdown("---")
     else:
-        st.success("Pasar dalam fase laminar (stabil).")
+        st.success("Pasar dalam fase laminar murni di bawah ambang batas ini.")
 else:
     st.error("Gagal terhubung ke node data.")
 
