@@ -12,7 +12,6 @@ if st.button("🔄 Segarkan Data Pasar"):
 
 @st.cache_data(ttl=10)
 def fetch_market_data():
-    # Menggunakan node data publik alternatif yang ramah cloud
     url = "https://data-api.binance.vision/api/v3/ticker/24hr"
     try:
         response = requests.get(url, timeout=5)
@@ -37,7 +36,7 @@ if df is not None and not df.empty:
         st.metric("Total Pair Dipindai", len(df))
     with col2:
         top_gainers = df.sort_values(by="priceChangePercent", ascending=False).iloc[0]
-        st.metric("Lonjakan Tertinggi", top_gainers['symbol'], f"+{top_gainers['priceChangePercent']}%")
+        st.metric("Lonjakan Tertinggi", top_gainers['symbol'], f"+{top_gainers['priceChangePercent']:.1f}%")
     with col3:
         top_volume = df.sort_values(by="quoteVolume", ascending=False).iloc[0]
         st.metric("Likuiditas Terbesar", top_volume['symbol'], f"${top_volume['quoteVolume']:,.0f}")
@@ -49,11 +48,18 @@ if df is not None and not df.empty:
 
     if not anomalies.empty:
         st.warning(f"Ditemukan {len(anomalies)} aset dengan distorsi topologis tinggi!")
-        st.dataframe(anomalies[['symbol', 'lastPrice', 'priceChangePercent', 'quoteVolume']], use_container_width=True)
+        
+        # Format dan ganti nama kolom agar pas di layar seluler
+        display_df = anomalies[['symbol', 'lastPrice', 'priceChangePercent', 'quoteVolume']].copy()
+        display_df.columns = ['Pair', 'Harga', 'Perubahan (%)', 'Volume (USDT)']
+        display_df['Perubahan (%)'] = display_df['Perubahan (%)'].round(2)
+        display_df['Volume (USDT)'] = display_df['Volume (USDT)'].map('{:,.0f}'.format)
+        
+        st.dataframe(display_df, use_container_width=True)
     else:
         st.success("Kondisi pasar dalam fase laminar (stabil, belum ada anomali ekstrem).")
 else:
-    st.error("Gagal terhubung ke node penyedia data likuiditas. Periksa kembali sambungan jaringan.")
+    st.error("Gagal terhubung ke node penyedia data likuiditas.")
 
 st.markdown("---")
 st.caption("ZF-Core V16.7-PREDATOR | Terkunci pada Time-Lock 2326")
