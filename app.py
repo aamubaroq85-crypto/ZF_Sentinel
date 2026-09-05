@@ -1,0 +1,60 @@
+import streamlit as st
+import requests
+import pandas as pd
+import time
+
+st.set_page_config(page_title="ZF-Sentinel Live", page_icon="⚡", layout="wide")
+
+st.title("⚡ ZF-Sentinel: Market Anomaly & Liquidity Scanner")
+st.markdown("*Protokol Pemantauan Ketegangan Pasar & Deteksi Anomali Berbasis Zuhri Formalism*")
+
+# Tombol Refresh Manual untuk HP
+if st.button("🔄 Segarkan Data Pasar"):
+    st.rerun()
+
+@st.cache_data(ttl=10)
+def fetch_market_data():
+    url = "https://api.binance.com/api/v3/ticker/24hr"
+    try:
+        response = requests.get(url, timeout=5)
+        data = response.json()
+        df = pd.DataFrame(data)
+        # Ambil pair populer USDT
+        df = df[df['symbol'].str.endswith('USDT')]
+        df['priceChangePercent'] = df['priceChangePercent'].astype(float)
+        df['volume'] = df['volume'].astype(float)
+        df['quoteVolume'] = df['quoteVolume'].astype(float)
+        return df
+    except Exception as e:
+        return None
+
+with st.spinner("Memindai manifold bursa..."):
+    df = fetch_market_data()
+
+if df is not None and not df.empty:
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Pair Dipindai", len(df))
+    with col2:
+        top_gainers = df.sort_values(by="priceChangePercent", ascending=False).iloc[0]
+        st.metric("Lonjakan Tertinggi", top_gainers['symbol'], f"+{top_gainers['priceChangePercent']}%")
+    with col3:
+        top_volume = df.sort_values(by="quoteVolume", ascending=False).iloc[0]
+        st.metric("Likuiditas Terbesar", top_volume['symbol'], f"${top_volume['quoteVolume']:,.0f}")
+
+    st.subheader("🚨 Deteksi Anomali & Lonjakan Volatilitas")
+    
+    # Filter aset yang mengalami anomali harga ekstrem (> 7% atau < -7%)
+    threshold = st.slider("Ambang Batas Anomali (%)", 3.0, 20.0, 7.0)
+    anomalies = df[abs(df['priceChangePercent']) >= threshold].sort_values(by="priceChangePercent", ascending=False)
+
+    if not anomalies.empty:
+        st.warning(f"Ditemukan {len(anomalies)} aset dengan distorsi topologis tinggi!")
+        st.dataframe(anomalies[['symbol', 'lastPrice', 'priceChangePercent', 'quoteVolume']], use_container_width=True)
+    else:
+        st.success("Kondisi pasar dalam fase laminar (stabil, belum ada anomali ekstrem).")
+else:
+    st.error("Gagal terhubung ke node penyedia data likuiditas.")
+
+st.markdown("---")
+st.caption("ZF-Core V16.7-PREDATOR | Terkunci pada Time-Lock 2326")
